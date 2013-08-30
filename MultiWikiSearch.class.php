@@ -23,15 +23,6 @@ class MultiWikiSearch extends SpecialPage {
 
     protected $profile;
 
-    /// Search engine
-    protected $searchEngine;
-
-    /// For links
-    protected $extraParams = array();
-
-    /// No idea, apparently used by some other classes
-    protected $mPrefix;
-
     // Wiki list from request
     protected $wikilist;
 
@@ -76,8 +67,6 @@ class MultiWikiSearch extends SpecialPage {
             || !is_null( $wgRequest->getVal( 'searchx' ) ) )
         {
             $this->showResults( $search );
-        } else {
-            $this->goResult( $search );
         }
     }
 
@@ -90,7 +79,6 @@ class MultiWikiSearch extends SpecialPage {
      */
     public function load( &$request, &$user ) {
         list( $this->limit, $this->offset ) = $request->getLimitOffset( 20, 'searchlimit' );
-        $this->mPrefix = $request->getVal( 'prefix', '' );
         $this->user = array('mId' => $user->mId, 'mToken' => $user->mToken);
 
         # Extract manually requested namespaces
@@ -131,40 +119,8 @@ class MultiWikiSearch extends SpecialPage {
         $this->wikilist = $request->getArray('wikilist');
     }
 
-    /**
-     * If an exact title match can be found, jump straight ahead to it.
-     *
-     * @param $term String
-     */
-    public function goResult( $term ) {
-        global $wgOut;
-        $this->setupPage( $term );
-
-        # Try to go to page as entered.
-        $t = Title::newFromText( $term );
-        # If the string cannot be used to create a title
-        if( is_null( $t ) ) {
-            return $this->showResults( $term );
-        }
-
-        $t = Title::newFromText( $term );
-        if( !is_null( $t ) ) {
-            global $wgGoToEdit;
-            wfRunHooks( 'SpecialSearchNogomatch', array( &$t ) );
-            wfDebugLog( 'nogomatch', $t->getText(), false );
-
-            # If the feature is enabled, go straight to the edit page
-            if( $wgGoToEdit ) {
-                $wgOut->redirect( $t->getFullURL( array( 'action' => 'edit' ) ) );
-                return;
-            }
-        }
-        return $this->showResults( $term );
-    }
-
     protected function requestApiSearch( $term ) {
         global $wgSitename, $wgServer, $wgScriptPath, $wgMultiWikiSearchOption, $wgSharedDB;
-
 
         if (!empty($this->wikilist) && !empty($term) && isset($wgMultiWikiSearchOption['wiki'])) {
             $cache = wfGetCache(CACHE_DB);
@@ -217,7 +173,6 @@ class MultiWikiSearch extends SpecialPage {
             }
         }
     }
-
 
     /**
      * @param $term String
@@ -351,14 +306,9 @@ class MultiWikiSearch extends SpecialPage {
         }
     }
 
-    /**
-     *
-     */
     protected function setupPage( $term ) {
         global $wgOut;
 
-        # Should advanced UI be used?
-        $this->searchAdvanced = ($this->profile === 'advanced');
         if( strval( $term ) !== ''  ) {
             $wgOut->setPageTitle( wfMsg( 'searchresults') );
             $wgOut->setHTMLTitle( wfMsg( 'pagetitle', wfMsg( 'searchresults-title', $term ) ) );
@@ -400,7 +350,7 @@ class MultiWikiSearch extends SpecialPage {
                 $opt['ns' . $n] = 1;
             }
         }
-        return $opt + $this->extraParams;
+        return $opt;
     }
 
     /**
@@ -465,7 +415,6 @@ class MultiWikiSearch extends SpecialPage {
         return "<li><div class='mw-search-result-heading'>{$link}</div> {$extract} \n" .
             "<div class='mw-search-result-data'>{$score}{$size} - {$date} </div>" .
             "</li>\n";
-
     }
 
     protected function getProfileForm( $profile, $term ) {
@@ -531,12 +480,6 @@ class MultiWikiSearch extends SpecialPage {
         }
 
         $showSections = array( 'namespaceTables' => $namespaceTables );
-
-        // Show redirects check only if backend supports it
-        if( $this->getSearchEngine()->supports( 'list-redirects' ) ) {
-            $showSections['redirects'] =
-                Xml::checkLabel( wfMsg( 'powersearch-redir' ), 'redirs', 'redirs', $this->searchRedirects );
-        }
 
         wfRunHooks( 'SpecialSearchPowerBox', array( &$showSections, $term, $opts ) );
 
@@ -762,43 +705,6 @@ class MultiWikiSearch extends SpecialPage {
             return $wgContLang->getNsIndex( $p[0] ) == NS_FILE;
         }
         return false;
-    }
-
-    /**
-     * Check if query starts with all: prefix
-     *
-     * @param $term String: the string to check
-     * @return Boolean
-     */
-    protected function startsWithAll( $term ) {
-
-        $allkeyword = wfMsgForContent('searchall');
-
-        $p = explode( ':', $term );
-        if( count( $p ) > 1 ) {
-            return $p[0]  == $allkeyword;
-        }
-        return false;
-    }
-
-    /**
-     * @since 1.18
-     */
-    public function getSearchEngine() {
-        if ( $this->searchEngine === null ) {
-            $this->searchEngine = SearchEngine::create();
-        }
-        return $this->searchEngine;
-    }
-
-    /**
-     * Users of hook SpecialSearchSetupEngine can use this to
-     * add more params to links to not lose selection when
-     * user navigates search results.
-     * @since 1.18
-     */
-    public function setExtraParam( $key, $value ) {
-        $this->extraParams[$key] = $value;
     }
 
     /**
