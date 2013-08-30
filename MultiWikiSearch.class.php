@@ -181,8 +181,8 @@ class MultiWikiSearch extends SpecialPage {
         global $wgOut, $wgContLang, $wgScript;
         wfProfileIn( __METHOD__ );
 
-        // Request API:Search in all selected wiki and getting full search list.
-        // Store it in cache. Cache time limit 1 hour. I think it will be enough.
+        // Request API:Search in all selected wikis and get all matches.
+        // Store it in cache for 1 hour. I think it's enough.
         $this->requestApiSearch( $term );
 
         $t = Title::newFromText( $term );
@@ -233,28 +233,28 @@ class MultiWikiSearch extends SpecialPage {
         $num = count($selected_wiki_search_result);
         $totalRes = count($this->wiki_search_result);
 
-       // show number of results and current offset
-       $wgOut->addHTML( $this->formHeader( $term, $num, $totalRes ) );
-       $wgOut->addHtml( $this->getProfileForm( $this->profile, $term ) );
+        // show number of results and current offset
+        $wgOut->addHTML( $this->formHeader( $term, $num, $totalRes ) );
+        $wgOut->addHtml( $this->getProfileForm( $this->profile, $term ) );
 
-       $wgOut->addHtml( Xml::closeElement( 'form' ) );
-       $wgOut->addHtml( "<div class='searchresults'>" );
+        $wgOut->addHtml( Xml::closeElement( 'form' ) );
+        $wgOut->addHtml( "<div class='searchresults'>" );
 
-       // prev/next links
-       if( $num || $this->offset ) {
-           // Show the create link ahead
-           $this->showCreateLink( $t );
-           $prevnext = wfViewPrevNext( $this->offset, $this->limit,
-               SpecialPage::getTitleFor( 'MultiWikiSearch' ),
-               wfArrayToCGI( $this->powerSearchOptions(), array( 'multiwikisearch' => $term, 'fulltext' => wfMsg( 'search' ), 'wikilist' => $this->wikilist ) ),
-               $num < $this->limit
-           );
-           $wgOut->addHTML( "<p class='mw-search-pager-top'>{$prevnext}</p>\n" );
-       } else {
-           wfRunHooks( 'SpecialSearchNoResults', array( $term ) );
-       }
+        // prev/next links
+        if( $num || $this->offset ) {
+            // Show the create link ahead
+            $this->showCreateLink( $t );
+            $prevnext = wfViewPrevNext( $this->offset, $this->limit,
+                SpecialPage::getTitleFor( 'MultiWikiSearch' ),
+                wfArrayToCGI( $this->powerSearchOptions(), array( 'multiwikisearch' => $term, 'fulltext' => wfMsg( 'search' ), 'wikilist' => $this->wikilist ) ),
+                $num < $this->limit
+            );
+            $wgOut->addHTML( "<p class='mw-search-pager-top'>{$prevnext}</p>\n" );
+        } else {
+            wfRunHooks( 'SpecialSearchNoResults', array( $term ) );
+        }
 
-       $wgOut->parserOptions()->setEditSection( false );
+        $wgOut->parserOptions()->setEditSection( false );
 
         // show results
         if( $num > 0 ) {
@@ -262,16 +262,15 @@ class MultiWikiSearch extends SpecialPage {
         }
 
         if( $num === 0 ) {
-           $wgOut->wrapWikiMsg( "<p class=\"mw-search-nonefound\">\n$1</p>", array( 'search-nonefound', wfEscapeWikiText( $term ) ) );
-           $this->showCreateLink( $t );
-       }
-       $wgOut->addHtml( "</div>" );
+            $wgOut->wrapWikiMsg( "<p class=\"mw-search-nonefound\">\n$1</p>", array( 'search-nonefound', wfEscapeWikiText( $term ) ) );
+            $this->showCreateLink( $t );
+        }
+        $wgOut->addHtml( "</div>" );
 
-
-       if( $num || $this->offset ) {
-           $wgOut->addHTML( "<p class='mw-search-pager-bottom'>{$prevnext}</p>\n" );
-       }
-       wfProfileOut( __METHOD__ );
+        if( $num || $this->offset ) {
+            $wgOut->addHTML( "<p class='mw-search-pager-bottom'>{$prevnext}</p>\n" );
+        }
+        wfProfileOut( __METHOD__ );
     }
 
     protected function showCreateLink( $t ) {
