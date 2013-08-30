@@ -29,7 +29,7 @@ $wgExtensionCredits['specialpage'][] = array(
     'author'      => 'Andrey Krasilnikov',
     'email'       => 'z010107@gmail.com',
     'url'         => 'http://wiki.4intra.net/MultiWikiSearch',
-    'description' => 'Allows to search in selected wiki, using MediaWiki API:Search'
+    'description' => 'Allows to search in multiple wikis at once, using MediaWiki Search API'
 );
 
 $dir = dirname(__FILE__);
@@ -39,16 +39,9 @@ $wgExtensionMessagesFiles['MultiWikiSearch'] = $dir."/MultiWikiSearch.i18n.php";
 $wgSpecialPages['MultiWikiSearch'] = 'MultiWikiSearch';
 $wgSpecialPageGroups['MultiWikiSearch'] = 'redirects';
 
-$commonModuleInfo = array(
-    'localBasePath' => dirname( __FILE__ ),
+$wgResourceModules['ext.MultiWikiSearch'] = array(
+    'localBasePath' => $dir,
     'remoteExtPath' => 'MultiWikiSearch',
-);
-
-$wgResourceModules['MultiWikiSearch.style'] = array(
-    'styles'        => array('MultiWikiSearch.css')
-) + $commonModuleInfo;
-
-$wgResourceModules['MultiWikiSearch.script'] = array(
+    'styles'        => array('MultiWikiSearch.css'),
     'scripts'       => array('MultiWikiSearch.js'),
-) + $commonModuleInfo;
-
+);

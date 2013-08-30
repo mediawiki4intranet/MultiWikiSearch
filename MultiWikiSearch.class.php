@@ -1,6 +1,7 @@
 <?php
 
-/* MultiWikiSearch extension class
+/**
+ * MultiWikiSearch extension class
  * Copyright (c) 2013, Andrey Krasilnikov <z010107@gmail.com>
  * License: GPLv3.
  *
@@ -59,8 +60,7 @@ class MultiWikiSearch extends SpecialPage {
         $this->outputHeader();
         $wgOut->allowClickjacking();
         $wgOut->addModuleStyles( 'mediawiki.special' );
-        $wgOut->addModuleStyles( 'MultiWikiSearch.style' );
-        $wgOut->addModules( 'MultiWikiSearch.script' );
+        $wgOut->addModules( 'ext.MultiWikiSearch' );
 
         // Strip underscores from title parameter; most of the time we'll want
         // text form here. But don't strip underscores from actual text params!
@@ -163,10 +163,10 @@ class MultiWikiSearch extends SpecialPage {
     }
 
     protected function requestApiSearch( $term ) {
-        global $wgSitename, $wgServer, $wgScriptPath, $wgMiltiWikiSearchOption, $wgSharedDB;
+        global $wgSitename, $wgServer, $wgScriptPath, $wgMultiWikiSearchOption, $wgSharedDB;
 
 
-        if (!empty($this->wikilist) && !empty($term) && isset($wgMiltiWikiSearchOption['wiki'])) {
+        if (!empty($this->wikilist) && !empty($term) && isset($wgMultiWikiSearchOption['wiki'])) {
             $cache = wfGetCache(CACHE_DB);
             $cache_key = md5(serialize(array('user' => $this->user, 'term' => $term, 'wikilist' => $this->wikilist, 'namespaces' => $this->namespaces)));
 
@@ -183,7 +183,7 @@ class MultiWikiSearch extends SpecialPage {
                     if ($wiki_name == $wgSitename) {
                         $wiki_rq_url = $wgServer.$wgScriptPath.$api_url;
                     } else {
-                        $wiki_rq_url = $wgMiltiWikiSearchOption['wiki'][$wiki_name].$api_url;
+                        $wiki_rq_url = $wgMultiWikiSearchOption['wiki'][$wiki_name].$api_url;
                     }
 
                     $options = [ 'header' => array('set-cookie: '.$wgSharedDB.'UserID'.'='.$this->user['mId'].'; Max-Age=3600; Version=1', 'set-cookie: '.$wgSharedDB.'Token'.'='.$this->user['mToken'].'; Max-Age=3600; Version=1') ];
@@ -427,13 +427,13 @@ class MultiWikiSearch extends SpecialPage {
      * @param $result Simple Object
      */
     protected function showHit( $result ) {
-        global $wgLang, $wgSitename, $wgServer, $wgMiltiWikiSearchOption, $wgScriptPath;
+        global $wgLang, $wgSitename, $wgServer, $wgMultiWikiSearchOption, $wgScriptPath;
         wfProfileIn( __METHOD__ );
 
         $title = $result->title;
         $titleSnippet = ($result->snippet != '') ? $result->snippet : null;
 
-        $link = '<a href="'.($result->wiki_name != $wgSitename ? $wgMiltiWikiSearchOption['wiki'][$result->wiki_name] : $wgScriptPath).'/index.php?title='.$title.'" title="'.$title.'" '.($result->wiki_name != $wgSitename ? ' target="_blank"' : '').'>'.$result->wiki_name.': '.$title.'</a>';
+        $link = '<a href="'.($result->wiki_name != $wgSitename ? $wgMultiWikiSearchOption['wiki'][$result->wiki_name] : $wgScriptPath).'/index.php?title='.$title.'" title="'.$title.'" '.($result->wiki_name != $wgSitename ? ' target="_blank"' : '').'>'.$result->wiki_name.': '.$title.'</a>';
 
         // format text extract
         $extract = "<div class='searchresult'>".$titleSnippet."</div>";
@@ -852,15 +852,15 @@ class MultiWikiSearch extends SpecialPage {
      */
 
     public function showWikiList() {
-        global $wgMiltiWikiSearchOption, $wgSitename ;
+        global $wgMultiWikiSearchOption, $wgSitename ;
 
-        if (!isset($wgMiltiWikiSearchOption['wiki']))
+        if (!isset($wgMultiWikiSearchOption['wiki']))
             return;
 
         $list_wiki = $this->addWikiCheckbox($wgSitename, 'mws_current');
 
-        foreach ($wgMiltiWikiSearchOption['wiki'] as $key => $item) {
-            $list_wiki .= $this->addWikiCheckbox($key, 'mws_'.$key);
+        foreach ($wgMultiWikiSearchOption['wiki'] as $key => $item) {
+            $list_wiki .= $this->addWikiCheckbox($key, 'mws_'.$key );
         }
 
         $out = Xml::openElement('div', array( 'class' =>  'mws-list-container' ) );
