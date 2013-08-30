@@ -1,0 +1,36 @@
+.mws-list div, .mws-list-label, .mws-list, #mws-togglebox {
+    display: inline-block;
+}
+
+.mws-list div, .mws-list div input {
+    margin-left: 10px;
+}
+
+.mws-list div label {
+    cursor: pointer;
+}
+
+.mws-list div label:hover {
+    border-bottom: 1px dotted #000000;
+}
+
+
+.mws-toggleall-label {
+    font-weight: bold;
+}
+
+.mws-list-container {
+    background-color: #F3F3F3;
+    border: 1px solid silver;
+    margin-top: 1em;
+    padding-left: 0.25em;
+}
+
+.mws-list-label {
+    padding-left: 0.5em;
+    display: inline-block;
+}
+
+.mws-list {
+    padding: 0.5em;
+}
