@@ -31,7 +31,7 @@ class MultiWikiSearch extends SpecialPage {
     protected $user;
 
     // Search result
-    protected $wiki_search_result;
+    protected $wikiSearchResult;
 
     // 1 hour by default
     static $CACHE_TIME = 3600;
@@ -66,7 +66,9 @@ class MultiWikiSearch extends SpecialPage {
         if ( $wgRequest->getVal( 'fulltext' )
             || !is_null( $wgRequest->getVal( 'offset' ) ) ) {
             $this->showResults( $search );
-        }
+        } else
+            $this->showResults( '' );
+
     }
 
     /**
@@ -78,7 +80,7 @@ class MultiWikiSearch extends SpecialPage {
      */
     public function load( &$request, &$user ) {
         list( $this->limit, $this->offset ) = $request->getLimitOffset( 20, 'searchlimit' );
-        $this->user = array( 'mId' => $user->mId, 'mToken' => $user->mToken );
+        $this->user = array( 'mId' => $user->mId, 'mToken' => $user->mToken, 'mName' => $user->mName );
 
         # Extract manually requested namespaces
         $nslist = $this->powerSearch( $request );
@@ -118,59 +120,57 @@ class MultiWikiSearch extends SpecialPage {
     }
 
     protected function requestSearchApi( $term ) {
-        global $wgSitename, $wgServer, $wgScriptPath, $wgMultiWikiSearchOption, $wgSharedDB;
+        global $wgMultiWikiSearchOption, $wgSharedDB;
 
         if ( !empty( $this->wikilist ) && !empty( $term ) &&
             isset( $wgMultiWikiSearchOption['wiki'] ) ) {
             $cache = wfGetCache( CACHE_DB );
-            $cache_key = md5( serialize( array( 'user' => $this->user, 'term' => $term, 'wikilist' => $this->wikilist, 'namespaces' => $this->namespaces ) ) );
+            $cacheKey = wfMemcKey( 'multiwikisearch', $this->user['mId'], $term, implode( '|', $this->wikilist ), implode( '|', $this->namespaces ) );
 
-            if ( $data_search_from_wikis_cache = $cache->get( $cache_key ) ) {
-                $this->wiki_search_result = json_decode( $data_search_from_wikis_cache );
+            if ( $dataSearchCache = $cache->get( $cacheKey ) ) {
+                $this->wikiSearchResult = json_decode( $dataSearchCache );
             } else {
-                $api_url = '/api.php?format=json&action=query&list=search&srsearch='.
+                $apiUrl = '/api.php?format=json&action=query&list=search&srsearch='.
                     urlencode( $term ).'&srprop=snippet|score|size|wordcount|timestamp&srlimit=50&sroffset=0'.
                     ( $this->namespaces ? '&srnamespace='.( implode( '|', $this->namespaces ) ) : '' );
 
-                $data_search_from_wikis = [];
-                foreach ( $this->wikilist as $wiki_name ) {
-                    $wiki_rq_url = '';
-                    if ( $wiki_name == $wgSitename ) {
-                        $wiki_rq_url = $wgServer.$wgScriptPath.$api_url;
-                    } else {
-                        $wiki_rq_url = $wgMultiWikiSearchOption['wiki'][$wiki_name].$api_url;
-                    }
+                $dataSearch = array();
+                foreach ( $this->wikilist as $wikiName ) {
+                    if ( isset( $wgMultiWikiSearchOption['wiki'][$wikiName] ) ) {
+                        $wikiUrl = $wgMultiWikiSearchOption['wiki'][$wikiName].$apiUrl;
 
-                    $options = array(
-                        'header' => array(
-                            'Set-Cookie: '.$wgSharedDB.'UserID'.'='.$this->user['mId'].'; Max-Age=3600; Version=1',
-                            'Set-Cookie: '.$wgSharedDB.'Token'.'='.$this->user['mToken'].'; Max-Age=3600; Version=1'
-                        ),
-                    );
+                        $options = array(
+                            'header' => array(
+                                'Set-Cookie: '.$wgSharedDB.'UserID'.'='.$this->user['mId'].'; Max-Age=3600; Version=1',
+                                'Set-Cookie: '.$wgSharedDB.'Token'.'='.$this->user['mToken'].'; Max-Age=3600; Version=1',
+                                'Set-Cookie: '.$wgSharedDB.'UserName'.'='.$this->user['mName'].'; Max-Age=3600; Version=1'
+                            ),
+                        );
 
-                    $data_content = HTTP::get( $wiki_rq_url, $options );
+                        $dataContent = HTTP::get( $wikiUrl, $options );
 
-                    if ( !empty( $data_content ) ) {
-                        $obj_data_content = json_decode( $data_content );
-                        if ( isset( $obj_data_content->query->search ) ) {
-                            foreach( $obj_data_content->query->search as $item ) {
-                                $item->wiki_name = $wiki_name;
-                                $data_search_from_wikis[] = $item;
+                        if ( !empty( $dataContent ) ) {
+                            $objData = json_decode( $dataContent );
+                            if ( isset( $objData->query->search ) ) {
+                                foreach( $objData->query->search as $item ) {
+                                    $item->wiki_name = $wikiName;
+                                    $dataSearch[] = $item;
+                                }
                             }
                         }
                     }
                 }
 
                 // Sort result by score
-                usort( $data_search_from_wikis, function( $a, $b ) {
+                usort( $dataSearch, function( $a, $b ) {
                     if ( !isset( $a->score ) || $a->score == $b->score ) {
                         return 0;
                     }
                     return $a->score > $b->score ? -1 : 1;
                 } );
 
-                $cache->set( $cache_key, json_encode( $data_search_from_wikis ), self::$CACHE_TIME );
-                $this->wiki_search_result = $data_search_from_wikis;
+                $cache->set( $cacheKey, json_encode( $dataSearch ), self::$CACHE_TIME );
+                $this->wikiSearchResult = $dataSearch;
             }
         }
     }
@@ -221,18 +221,11 @@ class MultiWikiSearch extends SpecialPage {
             return;
         }
 
-        // Total initial query matches (possible false positives)
-        // Divide full array to pages and calculate what page selected
-        $wiki_search_result_by_pages = array();
-        if ( !empty( $this->wiki_search_result ) ) {
-            $wiki_search_result_by_pages = array_chunk( $this->wiki_search_result, $this->limit, true );
-        }
-        $page_number = ( $this->offset > 0 && $this->limit > 0 ) ? $this->offset / $this->limit : 0;
-        $selected_wiki_search_result = isset( $wiki_search_result_by_pages[ $page_number ] ) ? $wiki_search_result_by_pages[ $page_number ] : array();
+        $wikiSearchResultCurrent = array_slice($this->wikiSearchResult, $this->offset, $this->limit);
 
         // Count items for pagination
-        $num = count( $selected_wiki_search_result );
-        $totalRes = count( $this->wiki_search_result );
+        $num = count( $wikiSearchResultCurrent );
+        $totalRes = count( $this->wikiSearchResult );
 
         // show number of results and current offset
         $wgOut->addHTML( $this->formHeader( $term, $num, $totalRes ) );
@@ -259,7 +252,7 @@ class MultiWikiSearch extends SpecialPage {
 
         // show results
         if( $num > 0 ) {
-            $wgOut->addHTML( $this->showMatches( $selected_wiki_search_result ) );
+            $wgOut->addHTML( $this->showMatches( $wikiSearchResultCurrent ) );
         }
 
         if( $num === 0 ) {
@@ -377,13 +370,13 @@ class MultiWikiSearch extends SpecialPage {
      * @param $result Simple Object
      */
     protected function showHit( $result ) {
-        global $wgLang, $wgSitename, $wgServer, $wgMultiWikiSearchOption, $wgScriptPath;
+        global $wgLang,  $wgMultiWikiSearchOption;
         wfProfileIn( __METHOD__ );
 
         $title = $result->title;
         $titleSnippet = $result->snippet ? $result->snippet : null;
 
-        $link = '<a href="'.( $result->wiki_name != $wgSitename ? $wgMultiWikiSearchOption['wiki'][$result->wiki_name] : $wgScriptPath ).'/index.php?title='.$title.'" title="'.$title.'" '.($result->wiki_name != $wgSitename ? ' target="_blank"' : '').'>'.$result->wiki_name.': '.$title.'</a>';
+        $link = '<a href="'.( isset( $wgMultiWikiSearchOption['wiki'][$result->wiki_name] ) ? $wgMultiWikiSearchOption['wiki'][$result->wiki_name] : '' ).'/index.php?title='.$title.'" title="'.$title.'" target="_blank">'.$result->wiki_name.': '.$title.'</a>';
 
         // format snippet
         $extract = "<div class='searchresult'>".$titleSnippet."</div>";
@@ -557,7 +550,7 @@ class MultiWikiSearch extends SpecialPage {
             'advanced' => array(
                 'message' => 'searchprofile-advanced',
                 'tooltip' => 'searchprofile-advanced-tooltip',
-                'namespaces' => self::NAMESPACES_CURRENT,
+                'namespaces' => 'sense',
             )
         );
 
@@ -708,20 +701,6 @@ class MultiWikiSearch extends SpecialPage {
     }
 
     /**
-     * Check in request uri existing wiki-key and return bool result
-     *
-     * @param $key
-     * @return bool
-     */
-    protected function checkWiki( $key )
-    {
-        if ( empty( $this->wikilist ) || ( !empty( $this->wikilist ) && in_array( $key, $this->wikilist ) ) ) {
-            return true;
-        }
-        return false;
-    }
-
-    /**
      * Add html block with selected wiki-name
      *
      * @param $label
@@ -730,8 +709,8 @@ class MultiWikiSearch extends SpecialPage {
      */
     protected function addWikiCheckbox( $label, $value )
     {
-        $checked = [];
-        if ( $this->checkWiki( $label ) ) {
+        $checked = array();
+        if ( empty( $this->wikilist ) || ( !empty( $this->wikilist ) && in_array( $label, $this->wikilist ) ) ) {
             $checked = array( 'checked' => 'checked' );
         }
 
@@ -758,16 +737,15 @@ class MultiWikiSearch extends SpecialPage {
      */
 
     public function showWikiList() {
-        global $wgMultiWikiSearchOption, $wgSitename;
+        global $wgMultiWikiSearchOption;
 
         if ( !isset( $wgMultiWikiSearchOption['wiki'] ) ) {
             return;
         }
 
-        $list_wiki = $this->addWikiCheckbox( $wgSitename, 'mws_current' );
-
+        $listWiki = '';
         foreach ( $wgMultiWikiSearchOption['wiki'] as $key => $item ) {
-            $list_wiki .= $this->addWikiCheckbox( $key, 'mws_'.$key );
+            $listWiki .= $this->addWikiCheckbox( $key, 'mws_'.$key );
         }
 
         $out = Xml::openElement('div', array( 'class' =>  'mws-list-container' ) );
@@ -775,7 +753,7 @@ class MultiWikiSearch extends SpecialPage {
             Xml::tags(
                 'div',
                 array( 'class' => 'mws-list' ),
-                $list_wiki .
+                $listWiki .
                     Xml::tags(
                         'div',
                         array( 'id' => '' ),
