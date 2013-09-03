@@ -45,3 +45,16 @@ $wgResourceModules['ext.MultiWikiSearch'] = array(
     'styles'        => array('MultiWikiSearch.css'),
     'scripts'       => array('MultiWikiSearch.js'),
 );
+
+// Default configuration:
+
+// Wikis to search in
+$wgMultiWikiSearchWikis = array(
+    // <site_name> => <script_path> (http://domain.com/w/)
+);
+
+// If you have several wikis with shared user databases, i.e. if $wgSharedDB is set
+// and $wgSharedTables contains 'user' table, you can specify true or
+// array(<site_name> => true) here so the extension will pass the autentication
+// to other wikis during search.
+$wgMultiWikiSearchSharedUsers = true;
