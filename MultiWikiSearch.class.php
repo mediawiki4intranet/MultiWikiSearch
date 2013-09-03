@@ -737,16 +737,16 @@ class MultiWikiSearch extends SpecialPage {
         return Xml::tags(
             'div',
             array( 'id' => '' ),
-            Xml::label( $label, $value ) .
-                Xml::element(
-                    'input',
-                    array(
-                        'type'  => 'checkbox',
-                        'value' => $label,
-                        'id'    => $value,
-                        'name'  => 'wikilist[]'
-                    ) + $checked
-                )
+            Xml::element(
+                'input',
+                array(
+                    'type'  => 'checkbox',
+                    'value' => $label,
+                    'id'    => $value,
+                    'name'  => 'wikilist[]'
+                ) + $checked
+            ) .
+            Xml::label( $label, $value )
         );
     }
 
@@ -764,25 +764,20 @@ class MultiWikiSearch extends SpecialPage {
             $listWiki .= $this->addWikiCheckbox( $key, 'mws_'.$key );
         }
 
-        $out = Xml::openElement('div', array( 'class' =>  'mws-list-container' ) );
+        $out = Xml::openElement( 'div', array( 'class' => 'mws-list-container' ) );
         $out .= Xml::label( wfMsg( 'multiwikisearch-list' ), 'mws-search-togglelabel', array('class' => 'mws-list-label' ) ) .
-            Xml::tags(
-                'div',
-                array( 'class' => 'mws-list' ),
+            Xml::tags( 'div', array( 'class' => 'mws-list' ),
                 $listWiki .
-                    Xml::tags(
-                        'div',
-                        array( 'id' => '' ),
-                        Xml::label( wfMsg( 'powersearch-toggleall' ), 'mws-toggleall', array('class' => 'mws-toggleall-label') ) .
-                            Xml::element(
-                                'input',
-                                array(
-                                    'type'=>'checkbox',
-                                    'id' => 'mws-toggleall',
-                                    'checked' => 'checked',
-                                )
-                            )
-                    )
+                Xml::tags( 'div', NULL,
+                    Xml::element( 'input',
+                        array(
+                            'type' => 'checkbox',
+                            'id' => 'mws-toggleall',
+                            'checked' => 'checked',
+                        )
+                    ) .
+                    Xml::label( wfMsg( 'powersearch-toggleall' ), 'mws-toggleall', array('class' => 'mws-toggleall-label') )
+                )
             );
 
         $out .= Xml::closeElement('div');

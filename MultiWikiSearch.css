@@ -2,18 +2,18 @@
     display: inline-block;
 }
 
-.mws-list div, .mws-list div input {
-    margin-left: 10px;
+.mws-list div {
+    margin-right: 10px;
 }
 
 .mws-list div label {
     cursor: pointer;
+    margin-left: 5px;
 }
 
 .mws-list div label:hover {
     border-bottom: 1px dotted #000000;
 }
-
 
 .mws-toggleall-label {
     font-weight: bold;
@@ -27,8 +27,7 @@
 }
 
 .mws-list-label {
-    padding-left: 0.5em;
-    display: inline-block;
+    padding: 0.5em 0 0 0.5em;
 }
 
 .mws-list {
