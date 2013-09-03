@@ -24,8 +24,8 @@ class MultiWikiSearch extends SpecialPage {
     // Search profile
     protected $profile;
 
-    // Wiki list taken from request
-    protected $wikilist;
+    // Wiki list taken from request (associative array, wiki name => any value)
+    protected $wikilist = array();
 
     // Current user
     protected $user;
@@ -118,8 +118,14 @@ class MultiWikiSearch extends SpecialPage {
         $this->searchRedirects = $request->getBool( 'redirs', $default ) ? 1 : 0;
         $this->sk = $this->getSkin();
         $this->fulltext = $request->getVal( 'fulltext' );
-        $this->wikilist = $request->getArray( 'wikilist' );
-        sort( $this->wikilist );
+
+        global $wgMultiWikiSearchWikis;
+        $wikis = array_flip( $request->getArray( 'wikilist' ) );
+        foreach ( $wgMultiWikiSearchWikis as $wikiName => $scriptPath ) {
+            if ( !$wikis || isset( $wikis[$wikiName] ) ) {
+                $this->wikilist[$wikiName] = true;
+            }
+        }
     }
 
     protected function shareUsers( $wikiName ) {
@@ -149,27 +155,25 @@ class MultiWikiSearch extends SpecialPage {
                     ( $this->namespaces ? '&srnamespace='.( implode( '|', $this->namespaces ) ) : '' );
 
                 $dataSearch = array();
-                foreach ( $this->wikilist as $wikiName ) {
-                    if ( isset( $wgMultiWikiSearchWikis[$wikiName] ) ) {
-                        $wikiUrl = $wgMultiWikiSearchWikis[$wikiName].$apiUrl;
+                foreach ( $this->wikilist as $wikiName => $true ) {
+                    $wikiUrl = $wgMultiWikiSearchWikis[$wikiName].$apiUrl;
 
-                        $req = MWHttpRequest::factory( $wikiUrl );
-                        if ( $this->shareUsers( $wikiName ) && $this->user['mId'] ) {
-                            $req->setHeader( 'Cookie',
-                                $wgSharedDB.'UserID='.urlencode( $this->user['mId'] ).'; '.
-                                $wgSharedDB.'Token='.$this->user['mToken'].'; '.
-                                $wgSharedDB.'UserName='.$this->user['mName']
-                            );
-                        }
-                        $status = $req->execute();
-                        if ( $status->isOK() ) {
-                            $dataContent = $req->getContent();
-                            $objData = json_decode( $dataContent );
-                            if ( isset( $objData->query->search ) ) {
-                                foreach( $objData->query->search as $item ) {
-                                    $item->wiki_name = $wikiName;
-                                    $dataSearch[] = $item;
-                                }
+                    $req = MWHttpRequest::factory( $wikiUrl );
+                    if ( $this->shareUsers( $wikiName ) && $this->user['mId'] ) {
+                        $req->setHeader( 'Cookie',
+                            $wgSharedDB.'UserID='.urlencode( $this->user['mId'] ).'; '.
+                            $wgSharedDB.'Token='.$this->user['mToken'].'; '.
+                            $wgSharedDB.'UserName='.$this->user['mName']
+                        );
+                    }
+                    $status = $req->execute();
+                    if ( $status->isOK() ) {
+                        $dataContent = $req->getContent();
+                        $objData = json_decode( $dataContent );
+                        if ( isset( $objData->query->search ) ) {
+                            foreach( $objData->query->search as $item ) {
+                                $item->wiki_name = $wikiName;
+                                $dataSearch[] = $item;
                             }
                         }
                     }
@@ -254,7 +258,11 @@ class MultiWikiSearch extends SpecialPage {
             $this->showCreateLink( $t );
             $prevnext = wfViewPrevNext( $this->offset, $this->limit,
                 SpecialPage::getTitleFor( 'MultiWikiSearch' ),
-                wfArrayToCGI( $this->powerSearchOptions(), array( 'multiwikisearch' => $term, 'fulltext' => wfMsg( 'search' ), 'wikilist' => $this->wikilist ) ),
+                wfArrayToCGI( $this->powerSearchOptions(), array(
+                    'multiwikisearch' => $term,
+                    'fulltext' => wfMsg( 'search' ),
+                    'wikilist' => array_keys( $this->wikilist )
+                ) ),
                 $num < $this->limit
             );
             $wgOut->addHTML( "<p class='mw-search-pager-top'>{$prevnext}</p>\n" );
@@ -690,7 +698,7 @@ class MultiWikiSearch extends SpecialPage {
             array(
                 'multiwikisearch' => $term,
                 'fulltext' => wfMsg( 'search' ),
-                'wikilist' => $this->wikilist,
+                'wikilist' => array_keys( $this->wikilist ),
             ),
             $opt
         );
@@ -730,7 +738,7 @@ class MultiWikiSearch extends SpecialPage {
      */
     protected function addWikiCheckbox( $label, $value ) {
         $checked = array();
-        if ( !$this->wikilist || in_array( $label, $this->wikilist ) ) {
+        if ( isset( $this->wikilist[$label] ) ) {
             $checked = array( 'checked' => 'checked' );
         }
 
