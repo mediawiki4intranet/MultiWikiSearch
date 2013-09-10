@@ -120,7 +120,7 @@ class MultiWikiSearch extends SpecialPage {
         $this->fulltext = $request->getVal( 'fulltext' );
 
         global $wgMultiWikiSearchWikis;
-        $wikis = array_flip( $request->getArray( 'wikilist' ) );
+        $wikis = array_flip( $request->getArray( 'wikilist' ) ?: array() );
         foreach ( $wgMultiWikiSearchWikis as $wikiName => $scriptPath ) {
             if ( !$wikis || isset( $wikis[$wikiName] ) ) {
                 $this->wikilist[$wikiName] = true;
