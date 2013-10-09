@@ -736,7 +736,7 @@ class MultiWikiSearch extends SpecialPage {
      * @param $value
      * @return string
      */
-    protected function addWikiCheckbox( $label, $value ) {
+    protected function addWikiCheckbox( $label, $value, $url ) {
         $checked = array();
         if ( isset( $this->wikilist[$label] ) ) {
             $checked = array( 'checked' => 'checked' );
@@ -754,7 +754,9 @@ class MultiWikiSearch extends SpecialPage {
                     'name'  => 'wikilist[]'
                 ) + $checked
             ) .
-            Xml::label( $label, $value )
+            Xml::openElement( 'label', array( 'for' => $label)) .
+            Xml::element('a', array('href' => $url, 'target' => '_blank'), $label) .
+            Xml::closeElement('label')
         );
     }
 
@@ -769,7 +771,7 @@ class MultiWikiSearch extends SpecialPage {
 
         $listWiki = '';
         foreach ( $wgMultiWikiSearchWikis as $key => $item ) {
-            $listWiki .= $this->addWikiCheckbox( $key, 'mws_'.$key );
+            $listWiki .= $this->addWikiCheckbox( $key, 'mws_'.$key, $item );
         }
 
         $out = Xml::openElement( 'div', array( 'class' => 'mws-list-container' ) );
