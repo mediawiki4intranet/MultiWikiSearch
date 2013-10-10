@@ -38,6 +38,11 @@ class MultiWikiSearch extends SpecialPage {
     static $CACHE_FIRST = 10;
     static $CACHE_TIME = 600;
 
+    // Search order
+    var $orderBy = '';
+    var $orderSort = '';
+    static $allowOrderByFields = array('weight' => true, 'date_modify' => true);
+
     public function __construct() {
         parent::__construct( 'MultiWikiSearch' );
     }
@@ -126,6 +131,18 @@ class MultiWikiSearch extends SpecialPage {
                 $this->wikilist[$wikiName] = true;
             }
         }
+
+        // Get sort order from request
+        $this->orderBy = $request->getVal('orderBy');
+        if (!isset(self::$allowOrderByFields[$this->orderBy]))
+        {
+            $this->orderBy = 'weight';
+        }
+        $this->orderSort = strtolower($request->getVal('sort'));
+        if ($this->orderSort !== 'asc' && $this->orderSort !== 'desc')
+        {
+            $this->orderSort = 'desc';
+        }
     }
 
     protected function shareUsers( $wikiName ) {
@@ -193,6 +210,31 @@ class MultiWikiSearch extends SpecialPage {
         }
     }
 
+    // Sort order widget
+    function getSortOrder()
+    {
+        global $wgTitle, $wgRequest;
+        $req = $wgRequest->getValues();
+        $html = '<div class="mw-search-sort"><label><b>'.wfMsg('searchSortTitle').'</b></label>';
+        foreach (self::$allowOrderByFields as $item => $true)
+        {
+            if ($item != $this->orderBy)
+            {
+                $sort = 'desc';
+                $arrow = '';
+            }
+            else
+            {
+                $sort = ($this->orderSort == 'desc' ? 'asc' : 'desc');
+                $arrow = ($this->orderSort == 'desc' ? '&#9660;' : '&#9650');
+            }
+            $url_option = array('orderBy' => $item, 'sort' => $sort) + $req;
+            $html .= '<a href="'.$wgTitle->getLocalUrl($url_option).'">'.wfMsg('searchSortOrder_'.$item).$arrow.'</a>';
+        }
+        $html .= '</div>';
+        return $html;
+    }
+
     /**
      * @param $term String
      */
@@ -239,6 +281,23 @@ class MultiWikiSearch extends SpecialPage {
             return;
         }
 
+        if ($this->orderBy && $this->orderSort)
+        {
+            $params = array('orderBy' => $this->orderBy, 'orderSort' => $this->orderSort);
+            usort( $this->wikiSearchResult, function( $a, $b ) use ($params) {
+                $ordBy = ($params['orderBy'] == 'weight') ? 'score' : 'timestamp' ;
+
+                if ( !isset( $a->$ordBy ) || $a->$ordBy == $b->$ordBy ) {
+                    return 0;
+                }
+                if ($params['orderSort'] == 'asc') {
+                    return $a->$ordBy > $b->$ordBy ? 1 : -1;
+                } else {
+                    return $a->$ordBy > $b->$ordBy ? -1 : 1;
+                }
+            } );
+        }
+
         $wikiSearchResultCurrent = array_slice( $this->wikiSearchResult, $this->offset, $this->limit );
 
         // Count items for pagination
@@ -250,6 +309,7 @@ class MultiWikiSearch extends SpecialPage {
         $wgOut->addHtml( $this->getProfileForm( $this->profile, $term ) );
 
         $wgOut->addHtml( Xml::closeElement( 'form' ) );
+        $wgOut->addHTML( $this->getSortOrder() );
         $wgOut->addHtml( "<div class='searchresults'>" );
 
         // prev/next links

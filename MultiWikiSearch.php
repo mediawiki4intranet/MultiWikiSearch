@@ -58,3 +58,18 @@ $wgMultiWikiSearchWikis = array(
 // array(<site_name> => true) here so the extension will pass the autentication
 // to other wikis during search.
 $wgMultiWikiSearchSharedUsers = true;
+
+$wgHooks['SpecialSearchSetupEngine'][] = 'linkToMultiWikiSearch';
+
+function linkToMultiWikiSearch()
+{
+    global $wgOut;
+
+    $wgOut->addHTML(
+        '<style>#bodyContent { position: relative; } .link-multi-wiki-search { position: absolute; top: 3px; left: 400px; } </style>
+        <a href="'.SpecialPage::getTitleFor( 'MultiWikiSearch' )->getLocalURL().'" class="link-multi-wiki-search">'.
+            wfMsg('linkToMultiWikiSearchPage').
+        '</a>'
+    );
+    return true;
+}
