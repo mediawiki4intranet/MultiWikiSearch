@@ -59,17 +59,19 @@ $wgMultiWikiSearchWikis = array(
 // to other wikis during search.
 $wgMultiWikiSearchSharedUsers = true;
 
-$wgHooks['SpecialSearchSetupEngine'][] = 'linkToMultiWikiSearch';
+$wgHooks['SpecialSearchResults'][] = 'linkToMultiWikiSearch';
+$wgHooks['SpecialSearchNoResults'][] = 'linkToMultiWikiSearch';
 
 function linkToMultiWikiSearch()
 {
     global $wgOut;
-
-    $wgOut->addHTML(
-        '<style>#bodyContent { position: relative; } .link-multi-wiki-search { position: absolute; top: 3px; left: 400px; } </style>
-        <a href="'.SpecialPage::getTitleFor( 'MultiWikiSearch' )->getLocalURL().'" class="link-multi-wiki-search">'.
-            wfMsg('linkToMultiWikiSearchPage').
-        '</a>'
+    $link = addslashes('<a href="'.SpecialPage::getTitleFor('MultiWikiSearch')->getLocalURL().
+        '" class="link-multi-wiki-search">'.wfMsg('linkToMultiWikiSearchPage').'</a>' );
+    $wgOut->addHTML(<<<"EOF"
+<script>
+$('#mw-search-top-table input[type=submit]').parent().append($("$link"));
+</script>
+EOF
     );
     return true;
 }
