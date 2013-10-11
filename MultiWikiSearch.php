@@ -59,8 +59,7 @@ $wgMultiWikiSearchWikis = array(
 // to other wikis during search.
 $wgMultiWikiSearchSharedUsers = true;
 
-$wgHooks['SpecialSearchResults'][] = 'linkToMultiWikiSearch';
-$wgHooks['SpecialSearchNoResults'][] = 'linkToMultiWikiSearch';
+$wgHooks['SpecialSearchSetupEngine'][] = 'linkToMultiWikiSearch';
 
 function linkToMultiWikiSearch()
 {
@@ -69,7 +68,7 @@ function linkToMultiWikiSearch()
         '" class="link-multi-wiki-search">'.wfMsg('linkToMultiWikiSearchPage').'</a>' );
     $wgOut->addHTML(<<<"EOF"
 <script>
-$('#mw-search-top-table input[type=submit]').parent().append($("$link"));
+$(document).ready(function() { $('#mw-search-top-table input[type=submit]').parent().append($("$link")); });
 </script>
 EOF
     );
