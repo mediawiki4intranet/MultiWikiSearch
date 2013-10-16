@@ -63,8 +63,10 @@ $wgHooks['SpecialSearchSetupEngine'][] = 'linkToMultiWikiSearch';
 
 function linkToMultiWikiSearch()
 {
-    global $wgOut;
-    $link = addslashes('<a href="'.SpecialPage::getTitleFor('MultiWikiSearch')->getLocalURL().
+    global $wgOut, $wgRequest;
+    $p = $wgRequest->getVal('search');
+    $p = $p !== '' ? array('multiwikisearch' => $p, 'fulltext' => 'search') : array();
+    $link = addslashes('<a href="'.SpecialPage::getTitleFor('MultiWikiSearch')->getLocalURL($p).
         '" class="link-multi-wiki-search">'.wfMsg('linkToMultiWikiSearchPage').'</a>' );
     $wgOut->addHTML(<<<"EOF"
 <script>
