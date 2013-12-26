@@ -323,7 +323,7 @@ class MultiWikiSearch extends SpecialPage {
                     'fulltext' => wfMsg( 'search' ),
                     'wikilist' => array_keys( $this->wikilist )
                 ) ),
-                $num < $this->limit
+                $num <= $this->limit
             );
             $wgOut->addHTML( "<p class='mw-search-pager-top'>{$prevnext}</p>\n" );
         } else {
