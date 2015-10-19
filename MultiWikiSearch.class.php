@@ -58,7 +58,10 @@ class MultiWikiSearch extends SpecialPage {
         $this->setHeaders();
         $this->outputHeader();
         $wgOut->allowClickjacking();
-        $wgOut->addModuleStyles( 'mediawiki.special' );
+        $wgOut->addModuleStyles( array(
+            'mediawiki.special', 'mediawiki.special.search', 'mediawiki.ui', 'mediawiki.ui.button',
+            'mediawiki.ui.input',
+        ) );
         $wgOut->addModules( 'ext.MultiWikiSearch' );
 
         // Strip underscores from title parameter; most of the time we'll want
@@ -87,7 +90,7 @@ class MultiWikiSearch extends SpecialPage {
      */
     public function load( &$request, &$user ) {
         list( $this->limit, $this->offset ) = $request->getLimitOffset( 20, 'searchlimit' );
-        $this->user = array( 'mId' => $user->mId, 'mToken' => $user->mToken, 'mName' => $user->mName );
+        $this->user = array( 'mId' => $user->mId, 'mToken' => $user->getToken(), 'mName' => $user->mName );
 
         # Extract manually requested namespaces
         $nslist = $this->powerSearch( $request );
@@ -239,7 +242,7 @@ class MultiWikiSearch extends SpecialPage {
      * @param $term String
      */
     public function showResults( $term ) {
-        global $wgOut, $wgContLang, $wgScript;
+        global $wgOut, $wgContLang, $wgLang, $wgScript;
         wfProfileIn( __METHOD__ );
 
         // Request API:Search in all selected wikis and get all matches.
@@ -316,14 +319,15 @@ class MultiWikiSearch extends SpecialPage {
         if( $num || $this->offset ) {
             // Show the create link ahead
             $this->showCreateLink( $t );
-            $prevnext = wfViewPrevNext( $this->offset, $this->limit,
+            $prevnext = $wgLang->viewPrevNext(
                 SpecialPage::getTitleFor( 'MultiWikiSearch' ),
-                wfArrayToCGI( $this->powerSearchOptions(), array(
+                $this->offset, $this->limit,
+                $this->powerSearchOptions() + array(
                     'multiwikisearch' => $term,
                     'fulltext' => wfMsg( 'search' ),
                     'wikilist' => array_keys( $this->wikilist )
-                ) ),
-                $num <= $this->limit
+                ),
+                $num+$this->offset >= $totalRes
             );
             $wgOut->addHTML( "<p class='mw-search-pager-top'>{$prevnext}</p>\n" );
         } else {
@@ -622,14 +626,6 @@ class MultiWikiSearch extends SpecialPage {
                 'tooltip' => 'searchprofile-images-tooltip',
                 'namespaces' => array( NS_FILE ),
             ),
-            'help' => array(
-                'message' => 'searchprofile-project',
-                'tooltip' => 'searchprofile-project-tooltip',
-                'namespaces' => SearchEngine::helpNamespaces(),
-                'namespace-messages' => SearchEngine::namespacesAsText(
-                    SearchEngine::helpNamespaces()
-                ),
-            ),
             'all' => array(
                 'message' => 'searchprofile-everything',
                 'tooltip' => 'searchprofile-everything-tooltip',
@@ -655,7 +651,7 @@ class MultiWikiSearch extends SpecialPage {
     protected function formHeader( $term, $resultsShown, $totalNum ) {
         global $wgLang;
 
-        $out = Xml::openElement('div', array( 'class' =>  'mw-search-formheader' ) );
+        $out = Xml::openElement('div', array( 'class' => 'mw-search-profile-tabs mw-search-formheader' ) );
 
         $bareterm = $term;
         if( $this->startsWithImage( $term ) ) {
@@ -693,6 +689,9 @@ class MultiWikiSearch extends SpecialPage {
         $out .= Xml::closeElement( 'ul' );
         $out .= Xml::closeElement( 'div' );
 
+        $out .= Xml::element( 'div', array( 'style' => 'clear:both' ), '', false );
+        $out .= Xml::closeElement('div');
+
         // Results-info
         if ( $resultsShown > 0 ) {
             if ( $totalNum > 0 ) {
@@ -706,7 +705,7 @@ class MultiWikiSearch extends SpecialPage {
             } elseif ( $resultsShown >= $this->limit ) {
                 $top = wfShowingResults( $this->offset, $this->limit );
             } else {
-                $top =  wfMsgExt( 'showingresultsnum', array( 'parseinline' ),
+                $top = wfMsgExt( 'showingresultsnum', array( 'parseinline' ),
                     $wgLang->formatNum( $this->limit ),
                     $wgLang->formatNum( $this->offset + 1 ),
                     $wgLang->formatNum( $resultsShown )
@@ -716,9 +715,6 @@ class MultiWikiSearch extends SpecialPage {
                 Xml::tags( 'ul', null, Xml::tags( 'li', null, $top ) )
             );
         }
-
-        $out .= Xml::element( 'div', array( 'style' => 'clear:both' ), '', false );
-        $out .= Xml::closeElement('div');
 
         return $out;
     }
