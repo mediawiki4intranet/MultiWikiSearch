@@ -47,6 +47,10 @@ class MultiWikiSearch extends SpecialPage {
         parent::__construct( 'MultiWikiSearch' );
     }
 
+    protected function getGroupName() {
+        return 'pages';
+    }
+
     /**
      * Entry point
      *

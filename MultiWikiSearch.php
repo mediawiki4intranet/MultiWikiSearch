@@ -37,7 +37,7 @@ $wgAutoloadClasses['MultiWikiSearch'] = $dir."/MultiWikiSearch.class.php";
 $wgExtensionMessagesFiles['MultiWikiSearch'] = $dir."/MultiWikiSearch.i18n.php";
 
 $wgSpecialPages['MultiWikiSearch'] = 'MultiWikiSearch';
-$wgSpecialPageGroups['MultiWikiSearch'] = 'redirects';
+$wgSpecialPageGroups['MultiWikiSearch'] = 'pages';
 
 $wgResourceModules['ext.MultiWikiSearch'] = array(
     'localBasePath' => $dir,
