@@ -57,6 +57,7 @@ $wgMultiWikiSearchWikis = array(
 // and $wgSharedTables contains 'user' table, you can specify true or
 // array(<site_name> => true) here so the extension will pass the autentication
 // to other wikis during search.
+// $wgDBname will be used if $wgSharedDB is empty.
 $wgMultiWikiSearchSharedUsers = true;
 
 $wgHooks['SpecialSearchSetupEngine'][] = 'linkToMultiWikiSearch';

@@ -153,14 +153,14 @@ class MultiWikiSearch extends SpecialPage {
     }
 
     protected function shareUsers( $wikiName ) {
-        global $wgMultiWikiSearchSharedUsers, $wgSharedDB;
-        return $wgSharedDB && ( $wgMultiWikiSearchSharedUsers === true ||
+        global $wgMultiWikiSearchSharedUsers;
+        return ( $wgMultiWikiSearchSharedUsers === true ||
             is_array( $wgMultiWikiSearchSharedUsers ) &&
             !empty( $wgMultiWikiSearchSharedUsers[$wikiName] ) );
     }
 
     protected function requestSearchApi( $term ) {
-        global $wgMultiWikiSearchWikis, $wgSharedDB;
+        global $wgMultiWikiSearchWikis, $wgSharedDB, $wgDBname;
 
         if ( $this->wikilist && trim( $term ) ) {
             $cache = wfGetCache( CACHE_DB );
@@ -179,15 +179,16 @@ class MultiWikiSearch extends SpecialPage {
                     ( $this->namespaces ? '&srnamespace='.( implode( '|', $this->namespaces ) ) : '' );
 
                 $dataSearch = array();
+                $sharedDB = $wgSharedDB ? $wgSharedDB : $wgDBname;
                 foreach ( $this->wikilist as $wikiName => $true ) {
                     $wikiUrl = $wgMultiWikiSearchWikis[$wikiName].$apiUrl;
 
                     $req = MWHttpRequest::factory( $wikiUrl );
                     if ( $this->shareUsers( $wikiName ) && $this->user['mId'] ) {
                         $req->setHeader( 'Cookie',
-                            $wgSharedDB.'UserID='.urlencode( $this->user['mId'] ).'; '.
-                            $wgSharedDB.'Token='.$this->user['mToken'].'; '.
-                            $wgSharedDB.'UserName='.$this->user['mName']
+                            $sharedDB.'UserID='.urlencode( $this->user['mId'] ).'; '.
+                            $sharedDB.'Token='.$this->user['mToken'].'; '.
+                            $sharedDB.'UserName='.$this->user['mName']
                         );
                     }
                     $status = $req->execute();
